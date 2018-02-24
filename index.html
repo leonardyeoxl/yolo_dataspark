@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags always come first -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+
+    <!-- Material Design fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+    <!-- Bootstrap Material Design -->
+    <link rel="stylesheet" href="https://cdn.rawgit.com/FezVrasta/bootstrap-material-design/dist/dist/bootstrap-material-design.min.css">
+
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  
+
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            float: left;
+            height: 100%;
+            width: 100%;
+        }
+
+        #content-window {
+            float: left;
+            font-family: 'Roboto', 'sans-serif';
+            height: 100%;
+            line-height: 30px;
+            padding-left: 10px;
+            width: 19%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="data"></div>
+
+    <div class="bmd-layout-container bmd-drawer-f-l bmd-drawer-overlay">
+
+        <header class="bmd-layout-header">
+            <div class="navbar navbar-light bg-faded">
+            <button class="navbar-toggler" type="button" data-toggle="drawer" data-target="#dw-s2">
+                <span class="sr-only">Toggle drawer</span>
+                <i class="material-icons">menu</i>
+            </button>
+            <ul class="nav navbar-nav">
+                <li class="nav-item btn-md" data-toggle="modal" data-target="#myModal">Merleen</li>
+            </ul>
+            </div>
+        </header>
+        <div id="dw-s2" class="bmd-layout-drawer bg-faded">
+                <div class="jumbotron jumbotron-fluid">
+                    <div class="container">
+                        <h4 class="display-5">How can Merleen help you?</h4>
+                        <!--<p class="lead">Please select the location and date for Merleen to do its magic</p>-->
+
+                        <form>
+                            <div class="form-group">
+                                <label for="exampleSelect1" class="bmd-label-floating">Select Gender</label>
+                                <select class="form-control" id="genderSelect">
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="B">Both</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="formGroupExampleInput" class="bmd-label-floating">Date</label>
+                                <input type="date" class="form-control" id="dateInput">
+                            </div>
+
+                            <div class="form-group" style="margin-top: 30px; text-align: center;">
+                                <button class="btn btn-primary btn-md" onclick="attemptToLoadDataFromServer();return false;">Show me the magic</button>
+                            </div>
+                        </form>
+                        
+                    </div>
+                </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">About Merleen</h4>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Marketers and event organisers are executing marketing campaigns at the less then ideal location and time. They approach people who are going to work or home. These people most likely would not entertain the marketers. Marketers and event organisers lack the mobility intelligence that would allow them to plan marketing events effectively and to reduce resource costs. 
+                    </p>
+                    <p>
+                        To address planning woes and reduction on resource costs, a software visualisation that maps out regions with the the most amount of people that stays in a region for at least 15 minutes based on the marketer/organizers selections.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="map"></div>
+    <!--<div id="content-window"></div>-->
+
+    <!-- jQuery first, then tether, then Bootstrap Material Design JS. -->
+    <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+    <script src="https://cdn.rawgit.com/HubSpot/tether/v1.3.4/dist/js/tether.min.js"></script>
+    <script src="https://cdn.rawgit.com/FezVrasta/bootstrap-material-design/dist/dist/bootstrap-material-design.iife.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="https://maxcdn.bootstrapcdn.com/js/ie10-viewport-bug-workaround.js"></script>
+    <script>
+        $('body').bootstrapMaterialDesign();
+    </script>
+    <script>
+        var map, heatmap;
+        
+        // global infowindow
+        var infowindow;
+
+        function initMap() {
+            var sg = { lat: 1.290270, lng: 103.851959 };
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 11.5,
+                center: sg
+            });
+
+            infowindow = new google.maps.InfoWindow();
+
+            loadJSON(function (response) {
+                // Parse JSON string into object
+                var actual_JSON = JSON.parse(response);
+
+                // formatDataIntoJSON(actual_JSON)
+
+                map.data.addGeoJson(actual_JSON);
+
+                // Set mouseover event for each feature.
+                // map.data.addListener('click', function(event) {
+                //     infowindow.setContent(event.feature.getProperty('Description'));
+                //     infowindow.setPosition(event.latLng);
+                //     infowindow.setOptions({pixelOffset: new google.maps.Size(0,-30)});
+                //     infowindow.open(map);
+                // });
+            });
+
+        }
+
+        function formatDataIntoJSON(actual_JSON){
+            let geojson_data = actual_JSON.features
+            var completed_array_of_objs = []
+            geojson_data.forEach(function(element) {
+                completed_array_of_objs.push(parseDataDescriptionIntoDB(element.properties.Description))
+            }, this);
+
+            document.getElementById("content-window").innerHTML = JSON.stringify(completed_array_of_objs)
+        }
+
+        function parseDataDescriptionIntoDB(data_description){
+            let doc = new DOMParser().parseFromString(data_description, 'text/html')
+            let tables = doc.body.querySelectorAll('table');
+            let table_data = tables[1].querySelectorAll('td');
+
+            var index = 0
+            var jsonData = {};
+            var attribute;
+
+            table_data.forEach(function(element) {
+                if(index%2 == 0){
+                    attribute = element.innerHTML.replace(/\s/g,'')
+                }else{
+                    jsonData[attribute] = element.innerHTML;
+                }
+                index++;
+            }, this);
+
+            return jsonData;
+        }
+
+        function loadJSON(callback) {
+            var xobj = new XMLHttpRequest();
+            xobj.overrideMimeType("application/json");
+            xobj.open('GET', 'https://sgsubzone.000webhostapp.com/sgsubzone/MP14_SUBZONE_WEB_PL.json', true); // Replace 'my_data' with the path to your file
+            xobj.onreadystatechange = function () {
+                if (xobj.readyState == 4 && xobj.status == "200") {
+                    // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+                    callback(xobj.responseText);
+                }
+            };
+            xobj.send(null);
+        }
+        
+    </script>
+    <script>
+
+        function loadDataFromServer(callback){
+
+            // yyyy-mm-dd
+            var date_value = document.getElementById('dateInput').value 
+
+            var e = document.getElementById("genderSelect");
+            var gender_value = e.options[e.selectedIndex].value;
+
+            var params = "date="+date_value+"&gender="+gender_value;
+
+            var xobj = new XMLHttpRequest();
+            xobj.overrideMimeType("application/json");
+            xobj.open('GET', 'http://localhost:8081', true); // Replace 'my_data' with the path to your file
+            xobj.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xobj.onreadystatechange = function () {
+                if (xobj.readyState == 4 && xobj.status == "200") {
+                    // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+                    callback(xobj.responseText);
+                }
+            };
+            xobj.send(params);
+            
+        }
+
+        function attemptToLoadDataFromServer(){
+            loadDataFromServer(function (response) {
+                // Parse JSON string into object
+                var data = JSON.parse(response);
+                loadStayPointAPI(data);
+            });
+        }
+        
+        function loadStayPointAPI(data){
+
+            map.data.forEach(function(feature){
+
+                for(var i=0; i<data.length; i++){
+                    if(feature.getProperty("Description").includes(data[i].subzone_code)){
+
+                        feature.setProperty("Subzone_Code", data[i].subzone_code);
+                        feature.setProperty("Subzone_Name", data[i].subzone_name);
+
+                        if(data[i].stay_point){
+                            feature.setProperty("Stay_Point_Timestamp", data[i].stay_point[0].timestamp);
+                            feature.setProperty("Stay_Point_Num_Visitors", data[i].stay_point[0].unique_agents);
+                            feature.setProperty("Stay_Point_Stay_Duration", data[i].stay_point[0].stay_duration);
+                            feature.setProperty("Stay_Point_Gender", data[i].stay_point[0].gender);
+                            feature.setProperty("Stay_Point_Birth_Year", data[i].stay_point[0].agent_year_of_birth);
+                        }
+
+                        if(data[i].origin_dest_matrix){
+                            feature.setProperty("ODM_Timestamp", data[i].origin_dest_matrix[0].timestamp);
+                            feature.setProperty("ODM_Purpose", data[i].origin_dest_matrix[0].purpose);
+                            feature.setProperty("ODM_Num_Visitors", data[i].origin_dest_matrix[0].unique_agents);
+                            feature.setProperty("ODM_Dominant_Mode", data[i].origin_dest_matrix[0].dominant_mode);
+                        }
+                    }
+                }
+            });
+
+            map.data.setStyle(function(feature) {
+                if(feature.getProperty("Stay_Point_Num_Visitors") > 30){
+                var color = 'red';
+                    return /** @type {google.maps.Data.StyleOptions} */({
+                        fillColor: color,
+                        strokeColor: color,
+                        strokeWeight: 2
+                    });
+                }
+            });
+
+            map.data.addListener('click', function(event) {
+                var recommendation = ""
+
+                var dominant_mode = event.feature.getProperty('ODM_Dominant_Mode')
+                if(dominant_mode == "TRAIN"){
+                    recommendation = "You might want to station near the train stations. "
+                }else if(dominant_mode == "BUS"){
+                    recommendation = "You might want to station near the bus stops. "
+                }
+
+                var stay_duration = event.feature.getProperty('Stay_Point_Stay_Duration')
+
+                if(parseInt(stay_duration) > 60){
+                    recommendation = recommendation+"You may want to grab something to eat before "+event.feature.getProperty('Stay_Point_Timestamp')
+                }else{
+                    recommendation = recommendation+"Try not to grab something to eat before "+event.feature.getProperty('Stay_Point_Timestamp')
+                }
+                
+                infowindow.setContent("<html><body><H1>"+event.feature.getProperty('Subzone_Name')+"</H1><p><b>Number of visitors spending time for at least 15 minutes: </b>"+event.feature.getProperty('Stay_Point_Num_Visitors').toString()+"</p><H2>Merleen recommends: </H2><p>"+recommendation+"</p></body></html>");
+                infowindow.setPosition(event.latLng);
+                infowindow.setOptions({pixelOffset: new google.maps.Size(0,-30)});
+                infowindow.open(map);
+            });
+        }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBpE2P2pFB2EP46KS1g_qFIawgDpxMN52U&callback=initMap"></script>
+
+</body>
+
+</html>
