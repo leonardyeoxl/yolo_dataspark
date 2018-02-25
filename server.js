@@ -2,7 +2,12 @@ var express = require('express');
 var request = require('request');
 var request_promise = require('request-promise');
 var fs = require('fs');
+var bodyParser = require('body-parser')
 var app = express();
+
+app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+  extended: true
+})); 
 
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -10,12 +15,12 @@ app.use(function(req, res, next) {
   next();
 });
 
-app.get('/', function (req, res) {
+app.post('/', function (req, res) {
 
     // Marina south MSSZ01
     // One north QTSZ08
     // City hall DTSZ02
-    var subzone_id_array = ["MSSZ01"]
+    var subzone_id_array = ["MSSZ01", "QTSZ08", "DTSZ02"]
     // var stayPoint_API = "http://api.datastreamx.com/1925/605/v1/staypoint/v2/query"
     // var OriginDestMatrix_API = "http://api.datastreamx.com/1925/605/v1/odmatrix/v3/query"
     var stayPoint_API = "https://apistore.datasparkanalytics.com:443/staypoint/v2/query"
@@ -38,6 +43,9 @@ app.get('/', function (req, res) {
             "aggregations": [{
                 "metric": "unique_agents",
                 "type": "hyperUnique"
+            },{
+                "metric": "sum_stay_duration",
+                "type": "longSum"
             }],
             "dimensionFacets":[
                 "stay_duration", "agent_year_of_birth", "agent_gender"
@@ -63,7 +71,7 @@ app.get('/', function (req, res) {
 
         return request_promise({
             headers: {
-                'Authorization': 'Bearer b3eeeac3-b4c6-3f2e-b6b4-800f1b3b74ea',
+                'Authorization': 'Bearer cfad7bb2-e07f-341d-aba9-f4385fa4c981',
                 'Content-Type': 'application/json',
             },
             url: stayPoint_API,
@@ -128,7 +136,7 @@ app.get('/', function (req, res) {
 
         return request_promise({
             headers: {
-                'Authorization': 'Bearer b3eeeac3-b4c6-3f2e-b6b4-800f1b3b74ea',
+                'Authorization': 'Bearer cfad7bb2-e07f-341d-aba9-f4385fa4c981',
                 'Content-Type': 'application/json',
             },
             url: OriginDestMatrix_API,
@@ -187,6 +195,7 @@ app.get('/', function (req, res) {
                 if(gender.includes(stay_point_data.event.agent_gender) || stay_point_data.event.staypoint_subzone == subzone){
                     stay_point["timestamp"] = stay_point_data.timestamp
                     stay_point["gender"] = stay_point_data.event.agent_gender
+                    stay_point["sum_stay_duration"] = stay_point_data.event.sum_stay_duration
                     stay_point["stay_duration"] = stay_point_data.event.stay_duration
                     stay_point["unique_agents"] = stay_point_data.event.hyperUnique_unique_agents
                     stay_point["agent_year_of_birth"] = stay_point_data.event.agent_year_of_birth
@@ -198,6 +207,7 @@ app.get('/', function (req, res) {
         stay_point_array = stay_point_array.filter((stay_point, index, self) => 
             self.findIndex(
                         sp => sp.timestamp === stay_point.timestamp && 
+                        sp.sum_stay_duration === stay_point.sum_stay_duration &&
                         sp.gender === stay_point.gender && 
                         sp.stay_duration === stay_point.stay_duration && 
                         sp.unique_agents === stay_point.unique_agents && 
@@ -236,25 +246,9 @@ app.get('/', function (req, res) {
 
     var promises = []
 
-    // var date = req.params.date
-
-    var date = "2017-05-29"
-
-    // var gender = []
-    // if (req.params.gender == "B"){
-    //     gender.push("M")
-    //     gender.push("F")
-    // }else if(req.params.gender == "M"){
-    //     gender.push("M")
-    // }else if(req.params.gender == "F"){
-    //     gender.push("F")
-    // }
-
-    var gender = ["M", "F"]
-
     subzone_id_array.forEach(function(subzone_id) {
-        promises.push(staypoint_data_array(subzone_id, date))
-        promises.push(origindestmatrix_data_array(subzone_id, date))
+        promises.push(staypoint_data_array(subzone_id, req.body.date))
+        promises.push(origindestmatrix_data_array(subzone_id, req.body.date))
     })
 
     Promise.all(promises).then(results => {
@@ -272,6 +266,18 @@ app.get('/', function (req, res) {
 
         var dataset = {}
         var dataset_list = []
+
+        var gender = []
+        if (req.body.gender == "B"){
+            gender.push("M")
+            gender.push("F")
+        }else if(req.body.gender == "M"){
+            gender.push("M")
+        }else if(req.body.gender == "F"){
+            gender.push("F")
+        }
+
+        var gender = ["M", "F"]
 
         subzone_id_array.forEach(function(subzone) {
             dataset[subzone] = processStayPointAndOriginDestMatrixData(retrieved_data, gender, subzone)

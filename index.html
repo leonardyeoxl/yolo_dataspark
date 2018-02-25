@@ -222,7 +222,7 @@
 
             var xobj = new XMLHttpRequest();
             xobj.overrideMimeType("application/json");
-            xobj.open('GET', 'http://localhost:8081', true); // Replace 'my_data' with the path to your file
+            xobj.open('POST', 'http://localhost:8081', true); // Replace 'my_data' with the path to your file
             xobj.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
             xobj.onreadystatechange = function () {
                 if (xobj.readyState == 4 && xobj.status == "200") {
@@ -258,6 +258,7 @@
                             feature.setProperty("Stay_Point_Stay_Duration", data[i].stay_point[0].stay_duration);
                             feature.setProperty("Stay_Point_Gender", data[i].stay_point[0].gender);
                             feature.setProperty("Stay_Point_Birth_Year", data[i].stay_point[0].agent_year_of_birth);
+                            feature.setProperty("Stay_Point_Sum_Stay_Duration", data[i].stay_point[0].sum_stay_duration);
                         }
 
                         if(data[i].origin_dest_matrix){
@@ -286,20 +287,24 @@
 
                 var dominant_mode = event.feature.getProperty('ODM_Dominant_Mode')
                 if(dominant_mode == "TRAIN"){
-                    recommendation = "You might want to station near the train stations. "
-                }else if(dominant_mode == "BUS"){
-                    recommendation = "You might want to station near the bus stops. "
+                    recommendation = "You might want to station near the train stations. <br>"
+                }else if(dominant_mode == "ROAD"){
+                    recommendation = "You might want to place marketing materials near the road. <br>"
+                }
+
+                var purpose = event.feature.getProperty('ODM_Purpose')
+
+                if(purpose.includes("W")){
+                    recommendation = recommendation+"Your potential customers are approx "+event.feature.getProperty('Stay_Point_Num_Visitors').toString()+" working adults in this region who are stay for at least 15 minutes in the region. <br>"
                 }
 
                 var stay_duration = event.feature.getProperty('Stay_Point_Stay_Duration')
 
-                if(parseInt(stay_duration) > 60){
-                    recommendation = recommendation+"You may want to grab something to eat before "+event.feature.getProperty('Stay_Point_Timestamp')
-                }else{
-                    recommendation = recommendation+"Try not to grab something to eat before "+event.feature.getProperty('Stay_Point_Timestamp')
+                if(parseInt(stay_duration)){
+                    recommendation = recommendation+"Your potential customers are staying in the region around "+event.feature.getProperty('Stay_Point_Stay_Duration')+ "minutes"
                 }
                 
-                infowindow.setContent("<html><body><H1>"+event.feature.getProperty('Subzone_Name')+"</H1><p><b>Number of visitors spending time for at least 15 minutes: </b>"+event.feature.getProperty('Stay_Point_Num_Visitors').toString()+"</p><H2>Merleen recommends: </H2><p>"+recommendation+"</p></body></html>");
+                infowindow.setContent("<html><body><H1>"+event.feature.getProperty('Subzone_Name')+"</H1><H2>Merleen recommends: </H2><p>"+recommendation+"</p></body></html>");
                 infowindow.setPosition(event.latLng);
                 infowindow.setOptions({pixelOffset: new google.maps.Size(0,-30)});
                 infowindow.open(map);
